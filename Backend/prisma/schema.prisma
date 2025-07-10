@@ -10,70 +10,114 @@ datasource db {
 }
 
 model User {
-    id                 String           @id @default(uuid())
-    name               String
+    id                 String           @id @default(uuid()) @db.Uuid
     email              String           @unique
     password           String // 🔐 new
-    phone              String? // ☎️ optional
     role               Role
+    kycStatus          KycStatus        @default(pending_verification)
+    name               String
+    phone              String? // ☎️ optional
     isVerified         Boolean          @default(false)
-    kycStatus          KycStatus        @default(PENDING)
     createdAt          DateTime         @default(now())
-    profile            Profile?
+    providerProfile    ProviderProfile?
+    customerProfile    CustomerProfile?
     resume             Resume? // 📄 1-to-1
     requests           ServiceRequest[] @relation("CustomerRequests")
     projectsAsCustomer Project[]        @relation("CustomerProjects")
     projectsAsProvider Project[]        @relation("ProviderProjects")
     matches            AiMatch[]
-    reviewsGiven    Review[] @relation("Reviewer")
-    reviewsReceived Review[] @relation("Recipient")
+    reviewsGiven       Review[]         @relation("Reviewer")
+    reviewsReceived    Review[]         @relation("Recipient")
+    sentMessages       Message[]        @relation("SentMessages")
+    receivedMessages   Message[]        @relation("ReceivedMessages")
+    invoicesAsProvider Invoice[]        @relation("InvoicesAsProvider")
+    invoicesAsCustomer Invoice[]        @relation("InvoicesAsCustomer")
 }
 
-model Profile {
-    id              String             @id @default(uuid())
-    user            User               @relation(fields: [userId], references: [id])
-    userId          String             @unique
+model ProviderProfile {
+    id                       String             @id @default(uuid()) @db.Uuid
+    user                     User               @relation(fields: [userId], references: [id])
+    userId                   String             @unique @db.Uuid
+    location                 String?
+    bio                      String?
+    hourlyRate               Float?
+    availability             String?            @db.VarChar(50)
+    portfolioUrls            String[]
+    profileVideoUrl          String? // 🆕 Profile video
+    certifications           Certification[] // ➕ relation
+    languages                String[] // 🆕 Spoken languages
+    rating                   Decimal            @default(0.00) @db.Decimal(3, 2)
+    totalReviews             Int                @default(0) @map("total_reviews")
+    totalProjects            Int                @default(0) @map("total_projects")
+    totalEarnings            Decimal            @default(0.00) @map("total_earnings") @db.Decimal(15, 2)
+    viewsCount               Int                @default(0) @map("views_count")
+    successRate              Decimal            @default(0.00) @map("success_rate") @db.Decimal(5, 2)
+    responseTime             Int                @default(0) @map("response_time")
+    isFeatured               Boolean            @default(false) @map("is_featured")
+    isVerified               Boolean            @default(false) @map("is_verified")
+    skills                   String[]
+    yearsExperience          Int?
+    website                  String? // 🆕 Personal or company site
+    completion               Int? // 🆕 Completion %
+    performance              PerformanceStat? // ➕ relation
+    portfolios               ProjectPortfolio[] // ➕ relation
+    minimumProjectBudget     Decimal?           @map("minimum_project_budget") @db.Decimal(10, 2)
+    maximumProjectBudget     Decimal?           @map("maximum_project_budget") @db.Decimal(10, 2)
+    preferredProjectDuration String?            @map("preferred_project_duration") @db.VarChar(50)
+    workPreference           String             @default("remote") @map("work_preference") @db.VarChar(50)
+    teamSize                 Int                @default(1) @map("team_size")
+    companySize              String?            @map("company_size") @db.VarChar(50)
+    createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+    updatedAt                DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+    @@map("users")
+}
+
+model CustomerProfile {
+    id              String   @id @default(uuid()) @db.Uuid
+    user            User     @relation(fields: [userId], references: [id])
+    userId          String   @unique @db.Uuid
     bio             String?
     location        String?
-    skills          String[]
-    yearsExperience Int?
-    hourlyRate      Float?
-    availability    Json?
-    portfolioUrls   String[]
-    profileVideoUrl String? // 🆕 Profile video
+    companySize     String?  @map("company_size") @db.VarChar(50)
+    description     String?
     website         String? // 🆕 Personal or company site
+    logoUrl         String?  @map("logo_url")
+    establishedYear Int?     @map("established_year")
+    employeeCount   Int?     @map("employee_count")
     languages       String[] // 🆕 Spoken languages
     completion      Int? // 🆕 Completion %
-    certifications  Certification[] // ➕ relation
-    performance     PerformanceStat? // ➕ relation
-    portfolios      ProjectPortfolio[] // ➕ relation
+    createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+    updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+    @@map("companies")
 }
 
 model Certification {
-    id         String   @id @default(uuid())
-    profile    Profile  @relation(fields: [profileId], references: [id])
-    profileId  String
+    id         String          @id @default(uuid()) @db.Uuid
+    profile    ProviderProfile @relation(fields: [profileId], references: [id])
+    profileId  String          @db.Uuid
     name       String
     issuer     String
     issuedDate DateTime
-    verified   Boolean  @default(false)
+    verified   Boolean         @default(false)
 }
 
 model PerformanceStat {
-    id             String  @id @default(uuid())
-    profile        Profile @relation(fields: [profileId], references: [id])
-    profileId      String  @unique
-    totalProjects  Int     @default(0)
-    completionRate Float   @default(0)
-    onTimeDelivery Float   @default(0)
-    responseTime   String  @default("N/A") // Example: "2 hours"
-    repeatClients  Float   @default(0)
+    id             String          @id @default(uuid()) @db.Uuid
+    profile        ProviderProfile @relation(fields: [profileId], references: [id])
+    profileId      String          @unique @db.Uuid
+    totalProjects  Int             @default(0)
+    completionRate Float           @default(0)
+    onTimeDelivery Float           @default(0)
+    responseTime   String          @default("N/A") // Example: "2 hours"
+    repeatClients  Float           @default(0)
 }
 
 model ProjectPortfolio {
-    id          String   @id @default(uuid())
-    profile     Profile  @relation(fields: [profileId], references: [id])
-    profileId   String
+    id          String          @id @default(uuid()) @db.Uuid
+    profile     ProviderProfile @relation(fields: [profileId], references: [id])
+    profileId   String          @db.Uuid
     title       String
     description String
     techStack   String[] // Tags: React, Node.js etc
@@ -84,33 +128,36 @@ model ProjectPortfolio {
 }
 
 model Review {
-  id          String   @id @default(uuid())
-  project     Project  @relation(fields: [projectId], references: [id])
-  projectId   String   @unique     // 1 review per project
-  reviewer    User     @relation("Reviewer", fields: [reviewerId], references: [id])
-  reviewerId  String
-  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
-  recipientId String
-  company     String?              // Optional: shown as "TechStart Sdn Bhd"
-  role        String?              // e.g. “Project Manager”
-  content     String               // The review text
-  rating      Float                // e.g. 4.9
-  createdAt   DateTime @default(now())
+    id                  String   @id @default(uuid()) @db.Uuid
+    project             Project  @relation(fields: [projectId], references: [id])
+    projectId           String   @unique @db.Uuid // 1 review per project
+    reviewer            User     @relation("Reviewer", fields: [reviewerId], references: [id])
+    reviewerId          String   @db.Uuid
+    recipient           User     @relation("Recipient", fields: [recipientId], references: [id])
+    recipientId         String   @db.Uuid
+    company             String? // Optional: shown as "TechStart Sdn Bhd"
+    role                String? // e.g. “Project Manager”
+    content             String // The review text
+    rating              Float // e.g. 4.9
+    communicationRating Int?     @map("communication_rating")
+    qualityRating       Int?     @map("quality_rating")
+    timelinessRating    Int?     @map("timeliness_rating")
+    createdAt           DateTime @default(now())
 }
 
 model Resume {
-    id          String   @id @default(uuid())
+    id          String   @id @default(uuid()) @db.Uuid
     user        User     @relation(fields: [userId], references: [id])
-    userId      String   @unique
+    userId      String   @unique @db.Uuid
     fileUrl     String // S3 or local path
     description String? // Summarized by LangChain
     uploadedAt  DateTime @default(now())
 }
 
 model ServiceRequest {
-    id             String          @id @default(uuid())
+    id             String          @id @default(uuid()) @db.Uuid
     customer       User            @relation("CustomerRequests", fields: [customerId], references: [id])
-    customerId     String
+    customerId     String          @db.Uuid
     title          String
     description    String
     category       ServiceCategory
@@ -124,34 +171,68 @@ model ServiceRequest {
 }
 
 model AiMatch {
-    id         String         @id @default(uuid())
+    id         String         @id @default(uuid()) @db.Uuid
     request    ServiceRequest @relation(fields: [requestId], references: [id])
-    requestId  String
+    requestId  String         @db.Uuid
     provider   User           @relation(fields: [providerId], references: [id])
-    providerId String
+    providerId String         @db.Uuid
     matchScore Float
     aiReason   String
 }
 
 model Project {
-    id               String          @id @default(uuid())
+    id               String          @id @default(uuid()) @db.Uuid
     serviceRequest   ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
-    serviceRequestId String?         @unique
+    serviceRequestId String?         @unique @db.Uuid
     customer         User            @relation("CustomerProjects", fields: [customerId], references: [id])
-    customerId       String
+    customerId       String          @db.Uuid
     provider         User            @relation("ProviderProjects", fields: [providerId], references: [id])
-    providerId       String
+    providerId       String          @db.Uuid
     status           ProjectStatus
     ndaSigned        Boolean         @default(false)
     milestones       Milestone[]
     payments         Payment[]
-    review Review?   // 1-to-1
+    review           Review? // 1-to-1
+    messages         Message[]
+    invoices         Invoice[]
+    createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+    updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+}
+
+model Invoice {
+    id             String    @id @default(uuid()) @db.Uuid
+    invoiceNumber  String    @unique @map("invoice_number") @db.VarChar(100)
+    projectId      String?   @map("project_id") @db.Uuid
+    providerId     String    @map("provider_id") @db.Uuid
+    customerId     String    @map("customer_id") @db.Uuid
+    status         String    @default("draft") @db.VarChar(50)
+    subtotal       Decimal   @db.Decimal(10, 2)
+    taxAmount      Decimal   @default(0.00) @map("tax_amount") @db.Decimal(10, 2)
+    discountAmount Decimal   @default(0.00) @map("discount_amount") @db.Decimal(10, 2)
+    totalAmount    Decimal   @map("total_amount") @db.Decimal(10, 2)
+    currency       String    @default("MYR") @db.VarChar(3)
+    issueDate      DateTime  @map("issue_date") @db.Date
+    dueDate        DateTime  @map("due_date") @db.Date
+    paidDate       DateTime? @map("paid_date") @db.Date
+    notes          String?
+    terms          String?
+    invoiceData    Json?     @map("invoice_data")
+    createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+    updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+    // Relations
+    project  Project?  @relation(fields: [projectId], references: [id])
+    provider User      @relation("InvoicesAsProvider", fields: [providerId], references: [id], onDelete: Cascade)
+    customer User      @relation("InvoicesAsCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+    payments Payment[]
+
+    @@map("invoices")
 }
 
 model Milestone {
-    id          String          @id @default(uuid())
+    id          String          @id @default(uuid()) @db.Uuid
     project     Project         @relation(fields: [projectId], references: [id])
-    projectId   String
+    projectId   String          @db.Uuid
     title       String
     description String
     dueDate     DateTime
@@ -161,14 +242,44 @@ model Milestone {
 }
 
 model Payment {
-    id          String        @id @default(uuid())
+    id          String        @id @default(uuid()) @db.Uuid
     project     Project       @relation(fields: [projectId], references: [id])
-    projectId   String
+    projectId   String        @db.Uuid
     milestone   Milestone?    @relation(fields: [milestoneId], references: [id])
-    milestoneId String?
+    milestoneId String?       @db.Uuid
     amount      Float
     method      PaymentMethod
     status      PaymentStatus
+    Invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+    invoiceId   String?       @db.Uuid
+}
+
+model Message {
+    id              String      @id @default(uuid()) @db.Uuid
+    projectId       String?     @map("project_id") @db.Uuid
+    senderId        String      @map("sender_id") @db.Uuid
+    receiverId      String      @map("receiver_id") @db.Uuid
+    messageType     MessageType @default(text) @map("message_type")
+    subject         String?     @db.VarChar(255)
+    content         String
+    attachments     String[]
+    isRead          Boolean     @default(false) @map("is_read")
+    readAt          DateTime?   @map("read_at") @db.Timestamptz(6)
+    parentMessageId String?     @map("parent_message_id") @db.Uuid
+    messageThreadId String?     @map("message_thread_id") @db.Uuid
+    isSystemMessage Boolean     @default(false) @map("is_system_message")
+    priority        String      @default("normal") @db.VarChar(20)
+    createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+    updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+    // Relations
+    project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    sender        User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+    receiver      User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+    parentMessage Message?  @relation("MessageReplies", fields: [parentMessageId], references: [id])
+    replies       Message[] @relation("MessageReplies")
+
+    @@map("messages")
 }
 
 enum Role {
@@ -178,9 +289,10 @@ enum Role {
 }
 
 enum KycStatus {
-    PENDING
-    APPROVED
-    REJECTED
+    active
+    inactive
+    suspended
+    pending_verification
 }
 
 enum ServiceCategory {
@@ -220,4 +332,11 @@ enum PaymentStatus {
     ESCROWED
     RELEASED
     REFUNDED
+}
+
+enum MessageType {
+    text
+    file
+    system
+    proposal
 }

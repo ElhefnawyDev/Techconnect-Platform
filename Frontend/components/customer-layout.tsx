@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Zap,
   Home,
@@ -29,17 +29,41 @@ import {
   CreditCard,
   Menu,
   X,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface CustomerLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function CustomerLayout({ children }: CustomerLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const pathname = usePathname()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Profile state
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to get user id from localStorage
+    let userId = null;
+    if (typeof window !== "undefined") {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        userId = user?.id;
+      } catch (e) {
+        userId = null;
+      }
+    }
+    const endpoint = `http://localhost:4000/api/${userId}`;
+    console.log(endpoint)
+    fetch(endpoint)
+      .then((res) => res.json())
+      .then((data) => setProfile(data))
+      .catch(() => setProfile(null))
+      .finally(() => setProfileLoading(false));
+  }, []);
 
   const navigation = [
     { name: "Dashboard", href: "/customer/dashboard", icon: Home },
@@ -47,24 +71,38 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     { name: "Find Providers", href: "/customer/providers", icon: Users },
     { name: "Messages", href: "/customer/messages", icon: MessageSquare },
     { name: "Settings", href: "/customer/settings", icon: Settings },
-  ]
+  ];
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? "block" : "hidden"}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+      <div
+        className={`fixed inset-0 z-50 lg:hidden ${
+          sidebarOpen ? "block" : "hidden"
+        }`}
+      >
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-75"
+          onClick={() => setSidebarOpen(false)}
+        />
         <div className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">TechConnect</span>
+              <span className="text-xl font-bold text-gray-900">
+                TechConnect
+              </span>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(false)}
+            >
               <X className="w-5 h-5" />
             </Button>
           </div>
@@ -96,7 +134,9 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">TechConnect</span>
+              <span className="text-xl font-bold text-gray-900">
+                TechConnect
+              </span>
             </div>
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">
@@ -132,10 +172,15 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         <header className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Button variant="ghost" size="sm" className="lg:hidden mr-2" onClick={() => setSidebarOpen(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden mr-2"
+                onClick={() => setSidebarOpen(true)}
+              >
                 <Menu className="w-5 h-5" />
               </Button>
-              <div className="hidden sm:block">
+              {/* <div className="hidden sm:block">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -144,7 +189,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                   />
                 </div>
-              </div>
+              </div> */}
             </div>
 
             <div className="flex items-center space-x-4">
@@ -157,18 +202,51 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                      <AvatarFallback>JD</AvatarFallback>
+                      {profile && profile.resume && profile.resume.fileUrl ? (
+                        <AvatarImage
+                          src={`/${profile.resume.fileUrl.replace(/\\/g, "/")}`}
+                          alt={profile.name || "User"}
+                        />
+                      ) : (
+                        <AvatarImage
+                          src="/placeholder.svg?height=32&width=32"
+                          alt="User"
+                        />
+                      )}
+                      <AvatarFallback>
+                        {profile && profile.name
+                          ? profile.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()
+                          : "U"}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">John Doe</p>
-                      <p className="text-xs leading-none text-muted-foreground">john@company.com</p>
+                      <p className="text-sm font-medium leading-none">
+                        {profileLoading
+                          ? "Loading..."
+                          : profile && profile.name
+                          ? profile.name
+                          : "Unknown User"}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {profileLoading
+                          ? "Loading..."
+                          : profile && profile.email
+                          ? profile.email
+                          : "-"}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -199,5 +277,5 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         <main className="p-6">{children}</main>
       </div>
     </div>
-  )
+  );
 }

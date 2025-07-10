@@ -1,58 +1,100 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { Plus, CheckCircle, DollarSign, Briefcase, TrendingUp, MessageSquare, Star, MapPin } from "lucide-react"
-import Link from "next/link"
-import { CustomerLayout } from "@/components/customer-layout"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import {
+  Plus,
+  CheckCircle,
+  DollarSign,
+  Briefcase,
+  TrendingUp,
+  MessageSquare,
+  Star,
+  MapPin,
+} from "lucide-react";
+import Link from "next/link";
+import { CustomerLayout } from "@/components/customer-layout";
+
+// Define Project type outside the component so it can be used in useState
+export type Project = {
+  id: string;
+  title: string;
+  provider?: string;
+  providerName?: string;
+  status: string;
+  progress?: number;
+  budget?: number;
+  deadline?: string;
+  avatar?: string;
+  createdAt?: string;
+  [key: string]: any; // for any extra fields
+};
 
 export default function CustomerDashboard() {
-  const [searchQuery, setSearchQuery] = useState("")
-
-  // Mock data
-  const stats = {
-    activeProjects: 3,
-    completedProjects: 12,
-    totalSpent: 45000,
-    avgRating: 4.8,
-  }
-
-  const recentProjects = [
-    {
-      id: 1,
-      title: "E-commerce Mobile App",
-      provider: "Ahmad Tech Solutions",
-      status: "in_progress",
-      progress: 65,
-      budget: 15000,
-      deadline: "2024-02-15",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 2,
-      title: "Company Website Redesign",
-      provider: "Digital Craft Studio",
-      status: "completed",
-      progress: 100,
-      budget: 8000,
-      deadline: "2024-01-20",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 3,
-      title: "Cloud Migration Services",
-      provider: "CloudTech Malaysia",
-      status: "pending",
-      progress: 0,
-      budget: 22000,
-      deadline: "2024-03-01",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ]
+  const [stats, setStats] = useState({
+    activeProjects: 0,
+    completedProjects: 0,
+    totalSpent: 0,
+    rating: null,
+  });
+  // Use Project[] as the type for recentProjects
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  useEffect(() => {
+    // Get user from localStorage
+    const user =
+      typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("user") || "null")
+        : null;
+    const customerId = user?.id; // fallback to example id
+    // Fetch stats
+    fetch(
+      `${
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api"
+      }/projects/customers/${customerId}/stats`
+    )
+      .then((res) => res.json())
+      .then((data) => setStats(data))
+      .catch(() =>
+        setStats({
+          activeProjects: 0,
+          completedProjects: 0,
+          totalSpent: 0,
+          rating: null,
+        })
+      );
+    // Fetch recent projects
+    fetch(
+      `${
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api"
+      }/projects/${customerId}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        // Sort by createdAt descending if available, else just slice
+        let projects = Array.isArray(data) ? data : [];
+        if (projects.length && projects[0].createdAt) {
+          projects = projects.sort((a, b) => {
+            const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bDate - aDate;
+          });
+        }
+        setRecentProjects(projects.slice(0, 3));
+      })
+      .catch(() => setRecentProjects([]))
+      .finally(() => setProjectsLoading(false));
+  }, []);
 
   const recommendedProviders = [
     {
@@ -77,33 +119,33 @@ export default function CustomerDashboard() {
       avatar: "/placeholder.svg?height=60&width=60",
       skills: ["Next.js", "React", "Node.js", "AWS"],
     },
-  ]
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "in_progress":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getStatusText = (status: string) => {
     switch (status) {
       case "completed":
-        return "Completed"
+        return "Completed";
       case "in_progress":
-        return "In Progress"
+        return "In Progress";
       case "pending":
-        return "Pending"
+        return "Pending";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   return (
     <CustomerLayout>
@@ -112,7 +154,9 @@ export default function CustomerDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Welcome back! Here's what's happening with your projects.</p>
+            <p className="text-gray-600">
+              Welcome back! Here's what's happening with your projects.
+            </p>
           </div>
           <Link href="/customer/projects/new">
             <Button className="w-full sm:w-auto">
@@ -128,8 +172,12 @@ export default function CustomerDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Projects</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeProjects}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Projects
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.activeProjects}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Briefcase className="w-6 h-6 text-blue-600" />
@@ -143,7 +191,9 @@ export default function CustomerDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.completedProjects}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.completedProjects}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-green-600" />
@@ -156,8 +206,12 @@ export default function CustomerDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                  <p className="text-2xl font-bold text-gray-900">RM{stats.totalSpent.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Spent
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    RM{stats.totalSpent?.toLocaleString?.() ?? 0}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <DollarSign className="w-6 h-6 text-purple-600" />
@@ -170,9 +224,13 @@ export default function CustomerDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Rating</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Avg Rating
+                  </p>
                   <div className="flex items-center gap-1">
-                    <p className="text-2xl font-bold text-gray-900">{stats.avgRating}</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.rating !== null ? stats.rating : "-"}
+                    </p>
                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
                   </div>
                 </div>
@@ -200,38 +258,72 @@ export default function CustomerDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src={project.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{project.provider.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{project.title}</h4>
-                          <p className="text-sm text-gray-600">{project.provider}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={getStatusColor(project.status)}>{getStatusText(project.status)}</Badge>
-                            <span className="text-xs text-gray-500">
-                              Due: {new Date(project.deadline).toLocaleDateString()}
-                            </span>
+                  {projectsLoading ? (
+                    <div className="text-center text-gray-500 py-8">
+                      Loading projects...
+                    </div>
+                  ) : recentProjects.length === 0 ? (
+                    <div className="text-center text-gray-500 py-8">
+                      No recent projects found.
+                    </div>
+                  ) : (
+                    recentProjects.map((project) => (
+                      <div
+                        key={project.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <Avatar>
+                            <AvatarImage
+                              src={project.avatar || "/placeholder.svg"}
+                            />
+                            <AvatarFallback>
+                              {project.provider?.charAt(0) ||
+                                project.title?.charAt(0) ||
+                                "P"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {project.title}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {project.provider || project.providerName || "-"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className={getStatusColor(project.status)}>
+                                {getStatusText(project.status)}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                Due:{" "}
+                                {project.deadline
+                                  ? new Date(
+                                      project.deadline
+                                    ).toLocaleDateString()
+                                  : "-"}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            RM{project.budget?.toLocaleString?.() ?? "-"}
+                          </p>
+                          {project.status === "in_progress" && (
+                            <div className="mt-2 w-24">
+                              <Progress
+                                value={project.progress}
+                                className="h-2"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                {project.progress}%
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">RM{project.budget.toLocaleString()}</p>
-                        {project.status === "in_progress" && (
-                          <div className="mt-2 w-24">
-                            <Progress value={project.progress} className="h-2" />
-                            <p className="text-xs text-gray-500 mt-1">{project.progress}%</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -242,32 +334,55 @@ export default function CustomerDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Recommended Providers</CardTitle>
-                <CardDescription>Top-rated ICT professionals for your next project</CardDescription>
+                <CardDescription>
+                  Top-rated ICT professionals for your next project
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {recommendedProviders.map((provider) => (
-                    <div key={provider.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div
+                      key={provider.id}
+                      className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
                       <div className="flex items-start space-x-3">
                         <Avatar className="w-12 h-12">
-                          <AvatarImage src={provider.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+                          <AvatarImage
+                            src={provider.avatar || "/placeholder.svg"}
+                          />
+                          <AvatarFallback>
+                            {provider.name.charAt(0)}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 truncate">{provider.name}</h4>
-                          <p className="text-sm text-gray-600">{provider.specialty}</p>
+                          <h4 className="font-semibold text-gray-900 truncate">
+                            {provider.name}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {provider.specialty}
+                          </p>
                           <div className="flex items-center gap-1 mt-1">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm font-medium">{provider.rating}</span>
-                            <span className="text-sm text-gray-500">({provider.completedJobs} jobs)</span>
+                            <span className="text-sm font-medium">
+                              {provider.rating}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              ({provider.completedJobs} jobs)
+                            </span>
                           </div>
                           <div className="flex items-center gap-1 mt-1">
                             <MapPin className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">{provider.location}</span>
+                            <span className="text-xs text-gray-500">
+                              {provider.location}
+                            </span>
                           </div>
                           <div className="flex flex-wrap gap-1 mt-2">
                             {provider.skills.slice(0, 2).map((skill) => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
+                              <Badge
+                                key={skill}
+                                variant="secondary"
+                                className="text-xs"
+                              >
                                 {skill}
                               </Badge>
                             ))}
@@ -277,7 +392,9 @@ export default function CustomerDashboard() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm font-medium text-blue-600 mt-2">RM{provider.hourlyRate}/hour</p>
+                          <p className="text-sm font-medium text-blue-600 mt-2">
+                            RM{provider.hourlyRate}/hour
+                          </p>
                         </div>
                       </div>
                       <Button size="sm" className="w-full mt-3">
@@ -288,7 +405,10 @@ export default function CustomerDashboard() {
                   ))}
                 </div>
                 <Link href="/customer/providers">
-                  <Button variant="outline" className="w-full mt-4 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4 bg-transparent"
+                  >
                     Browse All Providers
                   </Button>
                 </Link>
@@ -298,5 +418,5 @@ export default function CustomerDashboard() {
         </div>
       </div>
     </CustomerLayout>
-  )
+  );
 }
