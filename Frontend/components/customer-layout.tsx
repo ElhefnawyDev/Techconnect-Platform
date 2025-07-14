@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -40,12 +40,38 @@ interface CustomerLayoutProps {
 export function CustomerLayout({ children }: CustomerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Profile state
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // Logout function
+  const handleLogout = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
+    // Clear any other session data
+    sessionStorage.clear();
+
+    // Redirect to login page
+    router.push("/auth/login");
+  };
+
   useEffect(() => {
+    // Check if user is authenticated
+    if (typeof window !== "undefined") {
+      const user = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+
+      if (!user || !token) {
+        // User is not authenticated, redirect to login
+        router.push("/auth/login");
+        return;
+      }
+    }
+
     // Try to get user id from localStorage
     let userId = null;
     if (typeof window !== "undefined") {
@@ -56,22 +82,38 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         userId = null;
       }
     }
-    const endpoint = `http://localhost:4000/api/${userId}`;
-    console.log(endpoint)
-    fetch(endpoint)
-      .then((res) => res.json())
-      .then((data) => setProfile(data))
-      .catch(() => setProfile(null))
-      .finally(() => setProfileLoading(false));
-  }, []);
+
+    if (userId) {
+      const endpoint = `http://localhost:4000/api/${userId}`;
+      console.log(endpoint);
+      fetch(endpoint)
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("Failed to fetch profile");
+          }
+          return res.json();
+        })
+        .then((data) => setProfile(data))
+        .catch(() => {
+          setProfile(null);
+          // If profile fetch fails, user might be invalid, redirect to login
+          router.push("/auth/login");
+        })
+        .finally(() => setProfileLoading(false));
+    } else {
+      setProfileLoading(false);
+    }
+  }, [router]);
 
   const navigation = [
     { name: "Dashboard", href: "/customer/dashboard", icon: Home },
     { name: "My Projects", href: "/customer/projects", icon: Briefcase },
+    { name: "Provider Requests", href: "/customer/requests", icon: Users },
     { name: "Find Providers", href: "/customer/providers", icon: Users },
     { name: "Messages", href: "/customer/messages", icon: MessageSquare },
+    { name: "Profile", href: "/customer/profile", icon: User },
     { name: "Settings", href: "/customer/settings", icon: Settings },
-  ];
+  ]
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -263,7 +305,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                     <span>Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -274,7 +316,18 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        <main className="p-6">
+          {profileLoading ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

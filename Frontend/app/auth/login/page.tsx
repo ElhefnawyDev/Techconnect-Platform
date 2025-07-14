@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Mail, Lock, Eye, EyeOff, Building, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -29,6 +30,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,18 +48,22 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
+
       // Save token and user to localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect to dashboard based on role
+      // Small delay to ensure localStorage is set
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Redirect to dashboard based on role using Next.js router
       const userRole = data.user?.role;
       if (userRole === "CUSTOMER") {
-        window.location.href = "/customer/dashboard";
+        router.push("/customer/dashboard");
       } else if (userRole === "PROVIDER") {
-        window.location.href = "/provider/dashboard";
+        router.push("/provider/dashboard");
       } else {
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

@@ -32,6 +32,7 @@ model User {
     receivedMessages   Message[]        @relation("ReceivedMessages")
     invoicesAsProvider Invoice[]        @relation("InvoicesAsProvider")
     invoicesAsCustomer Invoice[]        @relation("InvoicesAsCustomer")
+    Proposal           Proposal[]
 }
 
 model ProviderProfile {
@@ -164,10 +165,28 @@ model ServiceRequest {
     budgetMin      Float
     budgetMax      Float
     aiStackSuggest String[]
+    timeline       String?
+    priority       String?
+    ndaSigned      Boolean         @default(false) // ✅ Make sure this is added
     status         RequestStatus   @default(OPEN)
     createdAt      DateTime        @default(now())
     matches        AiMatch[]
     project        Project?
+    proposals      Proposal[] // 👈 Add this
+}
+
+model Proposal {
+    id             String         @id @default(uuid()) @db.Uuid
+    provider       User           @relation(fields: [providerId], references: [id])
+    providerId     String         @db.Uuid
+    serviceRequest ServiceRequest @relation(fields: [requestId], references: [id])
+    requestId      String         @db.Uuid
+    bidAmount      Float
+    deliveryTime   Int // in days
+    coverLetter    String
+    attachmentUrl  String? // e.g., PDF proposal or portfolio
+    createdAt      DateTime       @default(now())
+    milestones     Milestone[] // Optional: Link to separate milestone model
 }
 
 model AiMatch {
@@ -239,6 +258,8 @@ model Milestone {
     amount      Float
     status      MilestoneStatus @default(PENDING)
     payments    Payment[]
+    Proposal    Proposal?       @relation(fields: [proposalId], references: [id])
+    proposalId  String?         @db.Uuid
 }
 
 model Payment {
@@ -296,12 +317,16 @@ enum KycStatus {
 }
 
 enum ServiceCategory {
-    WEB
-    MOBILE
-    IOT
-    CLOUD
-    AI
-    OTHER
+    WEB_DEVELOPMENT        @map("web_development")
+    MOBILE_APP_DEVELOPMENT @map("mobile_app_development")
+    CLOUD_SERVICES         @map("cloud_services")
+    IOT_SOLUTIONS          @map("iot_solutions")
+    DATA_ANALYTICS         @map("data_analytics")
+    CYBERSECURITY          @map("cybersecurity")
+    UI_UX_DESIGN           @map("ui_ux_design")
+    DEVOPS                 @map("devops")
+    AI_ML_SOLUTIONS        @map("ai_ml_solutions")
+    SYSTEM_INTEGRATION     @map("system_integration")
 }
 
 enum RequestStatus {
